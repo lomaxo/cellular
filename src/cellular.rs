@@ -23,6 +23,18 @@ impl Grid {
         }
     }
 
+    pub fn get_grid_strings(&self) -> Vec<String> {
+        let mut lines: Vec<String> = Vec::new();
+        for row in &self.cells {
+            let mut line: String = String::new();
+            for c in row {
+                line = line + {if *c {"X"} else {" "}};
+            }
+            lines.push(line);
+        }
+        lines
+    }
+
     pub fn randomise_grid(&mut self) {
         for row in &mut self.cells {
             for c in row {
