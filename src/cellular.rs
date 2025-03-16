@@ -1,6 +1,9 @@
 
+use std::mem;
+
 pub struct Grid {
     cells: Vec<Vec<bool>>,
+    prev_cells: Vec<Vec<bool>>,
     width: usize,
     height: usize,
 }
@@ -9,9 +12,18 @@ impl Grid {
     pub fn new(width: usize, height: usize) -> Grid {
         Grid {
             cells: vec![vec![false; width]; height],
+            prev_cells: vec![vec![false; width]; height],
             width,
             height,
         }
+    }
+
+    pub fn get_cells(&self) -> &Vec<Vec<bool>> {
+        return &self.cells
+    }
+
+    pub fn get_prev_cells(&self) -> &Vec<Vec<bool>> {
+        return &self.prev_cells
     }
 
     pub fn display(&self) {
@@ -75,7 +87,7 @@ impl Grid {
                 }
             }
         }
-        self.cells = new_grid;   
+        self.prev_cells = mem::replace(&mut self.cells, new_grid);   
     }
 }
 

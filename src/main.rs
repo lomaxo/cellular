@@ -1,4 +1,3 @@
-use std::thread;
 use std::time::Duration;
 
 mod cellular;
@@ -10,18 +9,21 @@ use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::symbols::border;
 use ratatui::text::Line;
-use ratatui::widgets::Block;
-use ratatui::widgets::Paragraph;
 use ratatui::widgets::Widget;
 use ratatui::DefaultTerminal;
 use ratatui::Frame;
 use ratatui::prelude::Stylize;
+use ratatui::{
+    prelude::*,
+    widgets::{Block, Paragraph},
+    text::Text,
+};
 
 fn main() -> io::Result<()> {
 
     let mut terminal = ratatui::init();
 
-    let mut app = App {exit: false, grid: cellular::Grid::new(150, 100) };
+    let mut app = App {exit: false, grid: cellular::Grid::new(150, 100), running: true };
 
     let app_result = app.run(&mut terminal);
     ratatui::restore();
@@ -33,6 +35,7 @@ fn main() -> io::Result<()> {
 pub struct App {
     exit: bool,
     grid: cellular::Grid,
+    running: bool
 }
 
 impl App {
@@ -46,7 +49,9 @@ impl App {
                     _ => {}
                 }
             }
-            self.grid.update_generation();
+            if self.running {
+                self.grid.update_generation();
+            }
 
         }
 
@@ -59,14 +64,17 @@ impl App {
 
     fn handle_key_event(&mut self, key_event: crossterm::event::KeyEvent) -> io::Result<()> {
         if key_event.kind == KeyEventKind::Press {
-            if key_event.code == KeyCode::Char('q') {
-                self.exit = true;
-            } else if key_event.code == KeyCode::Char('r') {
-                self.grid.randomise_grid();
+            match key_event.code {
+                KeyCode::Char('q') => self.exit = true,
+                KeyCode::Char('r') => self.grid.randomise_grid(),
+                KeyCode::Char(' ') => {
+                    if self.running { self.running = !self.running; }
+                    else { self.grid.update_generation(); }
+                }
+                KeyCode::Char('c') =>self.running = true,
+                _ => {}
             } 
-            // else if key_event.code == KeyCode::Char('n') {
-            //     self.grid.update_generation();
-            // }
+            
         }
         Ok(())
     }
@@ -93,7 +101,36 @@ impl Widget for &App {
                 .block(bottom_block)
                 .render(bottom_area, buf);
 
-            let grid_text = self.grid.get_grid_strings().join("\n");
+            // let grid_text = self.grid.get_grid_strings().join("\n");
+
+            let mut grid_text = Text::from("");
+            let cells = self.grid.get_cells();
+            let prev_cells = self.grid.get_prev_cells();
+
+            for row in 0..cells.len() {
+                let mut line = Line::from("");
+                for col in 0..cells[row].len() {
+                    if cells[row][col] {
+                        // Alive
+                        if prev_cells[row][col] {
+                            line.spans.push(Span::styled("█", Style::default().fg(Color::Green)));
+                        } else {                            
+                            line.spans.push(Span::styled("█", Style::default().fg(Color::LightGreen)));
+                        }
+                    } else {
+                        // Dead
+                        if prev_cells[row][col] {
+                            line.spans.push(Span::styled("█", Style::default().fg(Color::DarkGray)));
+                        } else {
+                            line.spans.push(Span::raw(" "));
+                        }
+                    }
+                }
+                grid_text.lines.push(line);
+            }
+            // lines
+
+
             Paragraph::new(grid_text)
                 .block(top_block)
                 .render(main_area, buf);
