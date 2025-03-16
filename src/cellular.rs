@@ -1,5 +1,5 @@
 
-use std::mem;
+use std::{mem, usize};
 
 pub struct Grid {
     cells: Vec<Vec<bool>>,
@@ -26,26 +26,38 @@ impl Grid {
         return &self.prev_cells
     }
 
-    pub fn display(&self) {
-        for row in &self.cells {
-            for c in row {
-                print!("{}", if *c {'X'} else {' '})
-            }
-            println!();
+    pub fn resize_grid(&mut self, width: usize, height: usize) {
+        for row in &mut self.cells {
+            row.resize(width, false);
         }
+        self.cells.resize(height, vec![false; width]);
+        for row in &mut self.prev_cells {
+            row.resize(width, false);
+        }
+        self.prev_cells.resize(height, vec![false; width]);
+        (self.width, self.height) = (width, height);
     }
 
-    pub fn get_grid_strings(&self) -> Vec<String> {
-        let mut lines: Vec<String> = Vec::new();
-        for row in &self.cells {
-            let mut line: String = String::new();
-            for c in row {
-                line = line + {if *c {"X"} else {" "}};
-            }
-            lines.push(line);
-        }
-        lines
-    }
+    // pub fn display(&self) {
+    //     for row in &self.cells {
+    //         for c in row {
+    //             print!("{}", if *c {'X'} else {' '})
+    //         }
+    //         println!();
+    //     }
+    // }
+
+    // pub fn get_grid_strings(&self) -> Vec<String> {
+    //     let mut lines: Vec<String> = Vec::new();
+    //     for row in &self.cells {
+    //         let mut line: String = String::new();
+    //         for c in row {
+    //             line = line + {if *c {"X"} else {" "}};
+    //         }
+    //         lines.push(line);
+    //     }
+    //     lines
+    // }
 
     pub fn randomise_grid(&mut self) {
         for row in &mut self.cells {

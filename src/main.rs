@@ -3,20 +3,17 @@ use std::time::Duration;
 mod cellular;
 use std::io;
 
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEventKind;
+use crossterm::event::{Event, KeyCode, KeyEventKind};
 use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::symbols::border;
-use ratatui::text::Line;
-use ratatui::widgets::Widget;
 use ratatui::DefaultTerminal;
 use ratatui::Frame;
 use ratatui::prelude::Stylize;
 use ratatui::{
     prelude::*,
-    widgets::{Block, Paragraph},
-    text::Text,
+    widgets::{Block, Paragraph, Widget},
+    text::{Text, Line},
 };
 
 fn main() -> io::Result<()> {
@@ -40,11 +37,15 @@ pub struct App {
 
 impl App {
     fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+        let size = terminal.size().unwrap();
+        self.grid.resize_grid(size.width as usize, size.height as usize);
+
         self.grid.randomise_grid();
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             if crossterm::event::poll(Duration::from_millis(10))? {
                 match crossterm::event::read()? {
+                    Event::Resize(width, height) => self.grid.resize_grid(width as usize, height as usize),
                     crossterm::event::Event::Key(key_event) => self.handle_key_event(key_event)?,
                     _ => {}
                 }
@@ -71,7 +72,7 @@ impl App {
                     if self.running { self.running = !self.running; }
                     else { self.grid.update_generation(); }
                 }
-                KeyCode::Char('c') =>self.running = true,
+                KeyCode::Char('c') => self.running = true,
                 _ => {}
             } 
             
