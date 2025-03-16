@@ -12,7 +12,7 @@ use ratatui::Frame;
 use ratatui::prelude::Stylize;
 use ratatui::{
     prelude::*,
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, Paragraph, Widget, Bar, BarChart, BarGroup},
     text::{Text, Line},
 };
 
@@ -86,6 +86,83 @@ impl App {
         }
         Ok(())
     }
+
+    fn render_bottom(&self, area: Rect, buf: &mut Buffer) {
+        Paragraph::new("Q: quit | R: randomise grid | <space>: pause\\step | C: continue")
+        .bold()
+        .centered()
+        .render(area, buf);
+    }
+
+    fn render_grid(&self, area: Rect, buf: &mut Buffer) {
+        let top_block= Block::bordered()
+        .title(Line::from(" Game of Life "))
+        .border_set(border::THICK);
+
+        let mut grid_text = Text::from("");
+        let cells = self.grid.get_cells();
+        let prev_cells = self.grid.get_prev_cells();
+
+        for row in 0..cells.len() {
+            let mut line = Line::from("");
+            for col in 0..cells[row].len() {
+                if cells[row][col] {
+                    // Alive
+                    if prev_cells[row][col] {
+                        line.spans.push(Span::styled("█", Style::default().fg(Color::Green)));
+                    } else {                            
+                        line.spans.push(Span::styled("█", Style::default().fg(Color::LightGreen)));
+                    }
+                } else {
+                    // Dead
+                    if prev_cells[row][col] {
+                        line.spans.push(Span::styled("█", Style::default().fg(Color::DarkGray)));
+                    } else {
+                        line.spans.push(Span::raw(" "));
+                    }
+                }
+            }
+            grid_text.lines.push(line);
+        }
+
+        Paragraph::new(grid_text)
+            .block(top_block)
+            .render(area, buf);
+        
+    }
+
+    fn render_stats(&self, area: Rect, buf: &mut Buffer) {
+        let stats = self.grid.get_stats();
+        // let stat_text = Text::from(vec![
+        //     Line::from(format!("Births: {}", stats.get_births())), 
+        //     Line::from(format!("Survivors: {}", stats.get_survivors())),
+        //     Line::from(format!("Deaths: {}", stats.get_deaths())),
+        //     Line::from(format!("Population: {}", stats.get_population()))
+
+        //     ]);
+        // Paragraph::new(stat_text)
+        // .block(
+        //     Block::bordered()
+        //         .title(Line::from(" Statistics "))
+        //         .border_set(border::THICK)
+        //     )
+        // .render(area, buf); 
+
+
+    
+        let barchart = BarChart::default()
+            .block(Block::bordered().title("BarChart"))
+            .bar_width(5)
+            .bar_gap(1)
+            .bar_style(Style::new().yellow())
+            .value_style(Style::new().red().bold())
+            .label_style(Style::new().white())
+            .data(&[("Births", stats.get_births()), ("Survives", stats.get_survivors()), ("Deaths", stats.get_deaths())])
+            // .data(BarGroup::default().bars(&[Bar::default().value(10), Bar::default().value(20)]))
+            .max(self.grid.get_max_cells()/2);
+            //.render(stats_area, buf);
+            barchart.render(area, buf);    
+    }
 }
 
 impl Widget for &App {
@@ -100,64 +177,15 @@ impl Widget for &App {
             
             if self.show_stats {
                 [main_area, stats_area] = horizonal_layout.areas(top_area); 
-                let stats = self.grid.get_stats();
-                let stat_text = Text::from(vec![
-                    Line::from(format!("Births: {}", stats.get_births())), 
-                    Line::from(format!("Survivors: {}", stats.get_survivors())),
-                    Line::from(format!("Deaths: {}", stats.get_deaths())),
-                    Line::from(format!("Population: {}", stats.get_population()))
-
-                    ]);
-                Paragraph::new(stat_text)
-                .block(
-                    Block::bordered()
-                        .title(Line::from(" Statistics "))
-                        .border_set(border::THICK)
-                    )
-                .render(stats_area, buf);             
+                self.render_stats(stats_area, buf);              
             }
             else {
                 main_area = top_area;
             }
 
-            let top_block= Block::bordered()
-            .title(Line::from(" Game of Life "))
-            .border_set(border::THICK);
+            self.render_grid(main_area, buf);
+            self.render_bottom(bottom_area, buf);
 
-            let mut grid_text = Text::from("");
-            let cells = self.grid.get_cells();
-            let prev_cells = self.grid.get_prev_cells();
-
-            for row in 0..cells.len() {
-                let mut line = Line::from("");
-                for col in 0..cells[row].len() {
-                    if cells[row][col] {
-                        // Alive
-                        if prev_cells[row][col] {
-                            line.spans.push(Span::styled("█", Style::default().fg(Color::Green)));
-                        } else {                            
-                            line.spans.push(Span::styled("█", Style::default().fg(Color::LightGreen)));
-                        }
-                    } else {
-                        // Dead
-                        if prev_cells[row][col] {
-                            line.spans.push(Span::styled("█", Style::default().fg(Color::DarkGray)));
-                        } else {
-                            line.spans.push(Span::raw(" "));
-                        }
-                    }
-                }
-                grid_text.lines.push(line);
-            }
-
-            Paragraph::new(grid_text)
-                .block(top_block)
-                .render(main_area, buf);
-            
-            Paragraph::new("Q: quit | R: randomise grid | <space>: pause\\step | C: continue")
-                .bold()
-                .centered()
-                .render(bottom_area, buf);
         }
 }
 

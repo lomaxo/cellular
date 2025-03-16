@@ -2,22 +2,22 @@
 use std::{mem, usize};
 #[derive(Default)]
 pub struct GridStats {
-    births: u32,
-    survivors: u32,
-    deaths: u32,
+    births: u64,
+    survivors: u64,
+    deaths: u64,
 }
 
 impl GridStats {
-    pub fn get_births(&self) -> u32 {
+    pub fn get_births(&self) -> u64 {
         return self.births;
     }
-    pub fn get_survivors(&self) -> u32 {
+    pub fn get_survivors(&self) -> u64 {
         return self.survivors;
     }
-    pub fn get_deaths(&self) -> u32 {
+    pub fn get_deaths(&self) -> u64 {
         return self.deaths;
     }
-    pub fn get_population(&self) -> u32 {
+    pub fn get_population(&self) -> u64 {
         return self.births + self.survivors;
     }
 }
@@ -39,6 +39,10 @@ impl Grid {
             height,
             // stats: GridStats::default(),
         }
+    }
+
+    pub fn get_max_cells(&self) -> u64 {
+        return (self.width * self.height) as u64;
     }
 
     pub fn get_cells(&self) -> &Vec<Vec<bool>> {
