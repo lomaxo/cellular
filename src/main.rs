@@ -88,7 +88,7 @@ impl App {
     }
 
     fn render_bottom(&self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Q: quit | R: randomise grid | <space>: pause\\step | C: continue")
+        Paragraph::new("Q: quit | R: randomise grid | <space>: pause\\step | C: continue | S: show\\hide stats")
         .bold()
         .centered()
         .render(area, buf);
@@ -133,35 +133,35 @@ impl App {
 
     fn render_stats(&self, area: Rect, buf: &mut Buffer) {
         let stats = self.grid.get_stats();
-        // let stat_text = Text::from(vec![
-        //     Line::from(format!("Births: {}", stats.get_births())), 
-        //     Line::from(format!("Survivors: {}", stats.get_survivors())),
-        //     Line::from(format!("Deaths: {}", stats.get_deaths())),
-        //     Line::from(format!("Population: {}", stats.get_population()))
+        let layout = Layout::vertical([Constraint::Max(20),Constraint::Length(6)]);
+        let [chart_area, blank_area] = layout.areas(area);
+        
+        let stat_text = Text::from(vec![
+            Line::from(format!("Births: {}", stats.get_births())), 
+            Line::from(format!("Survivors: {}", stats.get_survivors())),
+            Line::from(format!("Deaths: {}", stats.get_deaths())),
+            Line::from(format!("Population: {}", stats.get_population()))
+        ]);
+        Paragraph::new(stat_text)
+            .block(
+                Block::bordered()
+                    .title(Line::from(" Statistics "))
+                    .border_set(border::ROUNDED)
+                )
+            .render(blank_area, buf); 
 
-        //     ]);
-        // Paragraph::new(stat_text)
-        // .block(
-        //     Block::bordered()
-        //         .title(Line::from(" Statistics "))
-        //         .border_set(border::THICK)
-        //     )
-        // .render(area, buf); 
-
-
-    
-        let barchart = BarChart::default()
+        BarChart::default()
             .block(Block::bordered().title("BarChart"))
             .bar_width(5)
             .bar_gap(1)
             .bar_style(Style::new().yellow())
-            .value_style(Style::new().red().bold())
+            .value_style(Style::new().yellow())
             .label_style(Style::new().white())
             .data(&[("Births", stats.get_births()), ("Survives", stats.get_survivors()), ("Deaths", stats.get_deaths())])
             // .data(BarGroup::default().bars(&[Bar::default().value(10), Bar::default().value(20)]))
-            .max(self.grid.get_max_cells()/2);
-            //.render(stats_area, buf);
-            barchart.render(area, buf);    
+            .max(self.grid.get_max_cells()/2)
+            .render(chart_area, buf);
+            // barchart.render(area, buf);    
     }
 }
 
