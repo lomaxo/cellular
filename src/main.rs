@@ -187,11 +187,13 @@ impl App {
         
         let history = self.grid.get_history_data();
         let step = std::cmp::max(history.len() / STATS_WIDTH as usize, 1);
-        let data: Vec<&u64> = history.iter().step_by(step).collect();    
+        let data: Vec<&u64> = history.iter().step_by(step).collect();  
+        // let max_data = self.grid.get_max_cells()/2;  
+        let max_data = history.iter().max().copied().unwrap_or(1);
         Sparkline::default()
             .block(Block::bordered().title("Population History").border_set(STAT_BORDER_TYPE))
             .data(data)
-            .max(self.grid.get_max_cells()/2)
+            .max(max_data)
             .style(Style::default().red())
             .absent_value_style(Style::default().fg(Color::Red))
             .absent_value_symbol(symbols::shade::FULL)
