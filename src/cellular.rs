@@ -1,5 +1,7 @@
 
 use std::{mem, usize};
+use std::collections::VecDeque;
+
 #[derive(Default)]
 pub struct GridStats {
     births: u64,
@@ -27,6 +29,8 @@ pub struct Grid {
     prev_cells: Vec<Vec<bool>>,
     width: usize,
     height: usize,
+    age: u64, 
+    history: VecDeque<u64>,
     // stats: GridStats,
 }
 
@@ -37,6 +41,8 @@ impl Grid {
             prev_cells: vec![vec![false; width]; height],
             width,
             height,
+            age: 0,
+            history: VecDeque::new(),
             // stats: GridStats::default(),
         }
     }
@@ -45,12 +51,20 @@ impl Grid {
         return (self.width * self.height) as u64;
     }
 
+    pub fn get_age(&self) -> u64 {
+        return self.age
+    }
+
     pub fn get_cells(&self) -> &Vec<Vec<bool>> {
         return &self.cells
     }
 
     pub fn get_prev_cells(&self) -> &Vec<Vec<bool>> {
         return &self.prev_cells
+    }
+
+    pub fn get_history_data(&self) -> &VecDeque<u64> {
+        return &self.history;
     }
 
     pub fn resize_grid(&mut self, width: usize, height: usize) {
@@ -87,6 +101,8 @@ impl Grid {
     // }
 
     pub fn randomise_grid(&mut self) {
+        self.age = 0;
+        self.history.clear();
         for row in &mut self.cells {
             for c in row {
                 *c = rand::random();
@@ -115,6 +131,8 @@ impl Grid {
 
     pub fn update_generation(&mut self) {
         let mut new_grid = self.cells.clone();
+        self.age += 1;
+        self.history.push_back(self.get_stats().get_population());
         for x in 0..self.width {
             for y in 0..self.height {
                 let live_neighbours = self.get_neighbour_count(x, y);

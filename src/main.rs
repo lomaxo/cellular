@@ -4,19 +4,18 @@ mod cellular;
 use std::io;
 
 use crossterm::event::{Event, KeyCode, KeyEventKind};
-use ratatui::layout::Constraint;
-use ratatui::layout::Layout;
-use ratatui::symbols::border;
-use ratatui::DefaultTerminal;
-use ratatui::Frame;
-use ratatui::prelude::Stylize;
 use ratatui::{
+    layout::{Constraint, Layout},
+    symbols::border,
+    DefaultTerminal,
+    Frame,
     prelude::*,
-    widgets::{Block, Paragraph, Widget, Bar, BarChart, BarGroup, RenderDirection, Sparkline, Axis, Dataset, Chart, GraphType},
+    widgets::{Block, Paragraph, Widget, BarChart, Sparkline},
     text::{Text, Line},
 };
 
-use std::collections::VecDeque;
+const STATS_WIDTH: u16 = 30;
+
 
 fn main() -> io::Result<()> {
 
@@ -27,7 +26,7 @@ fn main() -> io::Result<()> {
         grid: cellular::Grid::new(150, 100), 
         running: true, 
         show_stats: false,
-        history: VecDeque::new(),
+        // history: VecDeque::new(),
     };
 
     let app_result = app.run(&mut terminal);
@@ -42,7 +41,7 @@ pub struct App {
     grid: cellular::Grid,
     running: bool,
     show_stats: bool,
-    history: VecDeque<u64>,
+    // history: VecDeque<u64>,
 }
 
 impl App {
@@ -62,8 +61,8 @@ impl App {
             }
             if self.running {
                 self.grid.update_generation();
-                self.history.push_back(self.grid.get_stats().get_population());
-                if self.history.len() > 20 {self.history.pop_front();} ;
+                // self.history.push_back(self.grid.get_stats().get_population());
+                // if self.history.len() > 1000 {self.history.pop_front();} ;
             }
 
         }
@@ -139,14 +138,16 @@ impl App {
 
     fn render_stats(&self, area: Rect, buf: &mut Buffer) {
         let stats = self.grid.get_stats();
-        let layout = Layout::vertical([Constraint::Max(20),Constraint::Max(20), Constraint::Length(6)]);
+        let layout = Layout::vertical([Constraint::Max(20),Constraint::Max(20), Constraint::Length(7)]);
         let [chart_area, history_area,  blank_area] = layout.areas(area);
         
         let stat_text = Text::from(vec![
             Line::from(format!("Births: {}", stats.get_births())), 
             Line::from(format!("Survivors: {}", stats.get_survivors())),
             Line::from(format!("Deaths: {}", stats.get_deaths())),
-            Line::from(format!("Population: {}", stats.get_population()))
+            Line::from(format!("Population: {}", stats.get_population())),
+            Line::from(format!("Age: {}", self.grid.get_age()))
+
         ]);
         Paragraph::new(stat_text)
             .block(
@@ -156,9 +157,10 @@ impl App {
                 )
             .render(blank_area, buf); 
 
+        let bar_width = (STATS_WIDTH - 4) / 3;
         BarChart::default()
             .block(Block::bordered().title("BarChart"))
-            .bar_width(5)
+            .bar_width(bar_width)
             .bar_gap(1)
             .bar_style(Style::new().yellow())
             .value_style(Style::new().yellow())
@@ -168,10 +170,11 @@ impl App {
             .max(self.grid.get_max_cells()/2)
             .render(chart_area, buf);
             // barchart.render(area, buf);
-            
+        let step = std::cmp::max(self.grid.get_age() as usize / STATS_WIDTH as usize, 1);
+        let data: Vec<&u64> = self.grid.get_history_data().iter().step_by(step).collect();    
         Sparkline::default()
             .block(Block::bordered().title("Sparkline"))
-            .data(&self.history)
+            .data(data)
             .max(self.grid.get_max_cells()/2)
             // .direction(RenderDirection::RightToLeft)
             .style(Style::default().red())
@@ -217,7 +220,7 @@ impl Widget for &App {
         {
             let vertical_layout = Layout::vertical([Constraint::Min(1), Constraint::Length(1)]);
             let [top_area, bottom_area] = vertical_layout.areas(area);
-            let horizonal_layout = Layout::horizontal([Constraint::Min(1), Constraint::Length(20)]);
+            let horizonal_layout = Layout::horizontal([Constraint::Min(1), Constraint::Length(STATS_WIDTH)]);
             let [main_area, stats_area];
             
             if self.show_stats {
