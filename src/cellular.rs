@@ -1,6 +1,7 @@
-
 use std::{mem, usize};
 use std::collections::VecDeque;
+
+const MAX_HISTORY: usize = 4000;
 
 #[derive(Default)]
 pub struct GridStats {
@@ -79,27 +80,6 @@ impl Grid {
         (self.width, self.height) = (width, height);
     }
 
-    // pub fn display(&self) {
-    //     for row in &self.cells {
-    //         for c in row {
-    //             print!("{}", if *c {'X'} else {' '})
-    //         }
-    //         println!();
-    //     }
-    // }
-
-    // pub fn get_grid_strings(&self) -> Vec<String> {
-    //     let mut lines: Vec<String> = Vec::new();
-    //     for row in &self.cells {
-    //         let mut line: String = String::new();
-    //         for c in row {
-    //             line = line + {if *c {"X"} else {" "}};
-    //         }
-    //         lines.push(line);
-    //     }
-    //     lines
-    // }
-
     pub fn randomise_grid(&mut self) {
         self.age = 0;
         self.history.clear();
@@ -133,6 +113,7 @@ impl Grid {
         let mut new_grid = self.cells.clone();
         self.age += 1;
         self.history.push_back(self.get_stats().get_population());
+        if self.history.len() > MAX_HISTORY { self.history.pop_front(); }
         for x in 0..self.width {
             for y in 0..self.height {
                 let live_neighbours = self.get_neighbour_count(x, y);

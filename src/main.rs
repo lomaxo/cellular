@@ -26,7 +26,7 @@ fn main() -> io::Result<()> {
         grid: cellular::Grid::new(150, 100), 
         running: true, 
         show_stats: false,
-        // history: VecDeque::new(),
+        anim_delay: 40,
     };
 
     let app_result = app.run(&mut terminal);
@@ -41,7 +41,8 @@ pub struct App {
     grid: cellular::Grid,
     running: bool,
     show_stats: bool,
-    // history: VecDeque<u64>,
+    anim_delay: u64,
+
 }
 
 impl App {
@@ -52,18 +53,18 @@ impl App {
         self.grid.randomise_grid();
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
-            if crossterm::event::poll(Duration::from_millis(10))? {
+            if crossterm::event::poll(Duration::from_millis(self.anim_delay))? {
                 match crossterm::event::read()? {
                     Event::Resize(width, height) => self.grid.resize_grid(width as usize, height as usize),
                     crossterm::event::Event::Key(key_event) => self.handle_key_event(key_event)?,
                     _ => {}
                 }
+            } else {
+                if self.running {
+                    self.grid.update_generation();
+                }
             }
-            if self.running {
-                self.grid.update_generation();
-                // self.history.push_back(self.grid.get_stats().get_population());
-                // if self.history.len() > 1000 {self.history.pop_front();} ;
-            }
+            
 
         }
 
@@ -85,6 +86,9 @@ impl App {
                 }
                 KeyCode::Char('s') => self.show_stats = !self.show_stats,
                 KeyCode::Char('c') => self.running = true,
+                KeyCode::Left => self.anim_delay = std::cmp::min(self.anim_delay * 2, 1000),
+                KeyCode::Right => self.anim_delay = std::cmp::max(self.anim_delay / 2, 1),
+
                 _ => {}
             } 
             
@@ -93,7 +97,7 @@ impl App {
     }
 
     fn render_bottom(&self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Q: quit | R: randomise grid | <space>: pause\\step | C: continue | S: show\\hide stats")
+        Paragraph::new("Q: quit | R: randomise grid | <space>: pause\\step | C: continue | S: show\\hide stats | ←\\→: change speed")
         .bold()
         .centered()
         .render(area, buf);
@@ -137,16 +141,26 @@ impl App {
     }
 
     fn render_stats(&self, area: Rect, buf: &mut Buffer) {
+        const SPARK_HEIGHT: u16 = 20;
+        const BAR_HEIGHT: u16 = 20;
+
         let stats = self.grid.get_stats();
-        let layout = Layout::vertical([Constraint::Max(20),Constraint::Max(20), Constraint::Length(7)]);
-        let [chart_area, history_area,  blank_area] = layout.areas(area);
-        
+        let [history_area, chart_area,  text_area] = 
+            Layout::vertical(
+                [Constraint::Max(BAR_HEIGHT),
+                Constraint::Max(SPARK_HEIGHT), 
+                Constraint::Length(8)]
+            ).areas(area);
+        let speed = (1000 as f64 / self.anim_delay as f64).log2();
+
         let stat_text = Text::from(vec![
             Line::from(format!("Births: {}", stats.get_births())), 
             Line::from(format!("Survivors: {}", stats.get_survivors())),
             Line::from(format!("Deaths: {}", stats.get_deaths())),
             Line::from(format!("Population: {}", stats.get_population())),
-            Line::from(format!("Age: {}", self.grid.get_age()))
+            Line::from(format!("Age: {}", self.grid.get_age())),
+            Line::from(format!("Speed: {:.0}", speed))
+
 
         ]);
         Paragraph::new(stat_text)
@@ -155,61 +169,32 @@ impl App {
                     .title(Line::from(" Statistics "))
                     .border_set(border::ROUNDED)
                 )
-            .render(blank_area, buf); 
+            .render(text_area, buf); 
 
         let bar_width = (STATS_WIDTH - 4) / 3;
         BarChart::default()
-            .block(Block::bordered().title("BarChart"))
+            .block(Block::bordered())//.title("BarChart"))
             .bar_width(bar_width)
             .bar_gap(1)
             .bar_style(Style::new().yellow())
             .value_style(Style::new().yellow())
             .label_style(Style::new().white())
             .data(&[("Births", stats.get_births()), ("Survives", stats.get_survivors()), ("Deaths", stats.get_deaths())])
-            // .data(BarGroup::default().bars(&[Bar::default().value(10), Bar::default().value(20)]))
             .max(self.grid.get_max_cells()/2)
             .render(chart_area, buf);
-            // barchart.render(area, buf);
-        let step = std::cmp::max(self.grid.get_age() as usize / STATS_WIDTH as usize, 1);
-        let data: Vec<&u64> = self.grid.get_history_data().iter().step_by(step).collect();    
+        
+        
+        let history = self.grid.get_history_data();
+        let step = std::cmp::max(history.len() / STATS_WIDTH as usize, 1);
+        let data: Vec<&u64> = history.iter().step_by(step).collect();    
         Sparkline::default()
-            .block(Block::bordered().title("Sparkline"))
+            .block(Block::bordered().title("Population History"))
             .data(data)
             .max(self.grid.get_max_cells()/2)
-            // .direction(RenderDirection::RightToLeft)
             .style(Style::default().red())
             .absent_value_style(Style::default().fg(Color::Red))
             .absent_value_symbol(symbols::shade::FULL)
             .render(history_area, buf);  
-
-
-        // let data = Dataset::default()
-        //     .name("data2")
-        //     .marker(symbols::Marker::Braille)
-        //     .graph_type(GraphType::Line)
-        //     .style(Style::default().magenta())
-        //     // .data(&[(4.0, 5.0), (5.0, 8.0), (7.66, 13.5)]);
-        //     .data(&self.history);
-        // // Create the X axis and define its properties
-        // let x_axis = Axis::default()
-        // .title("X Axis".red())
-        // .style(Style::default().white())
-        // .bounds([0.0, 1000.0]);
-        // // .labels(["0.0", "5.0", "10.0"]);
-
-        // // Create the Y axis and define its properties
-        // let y_axis = Axis::default()
-        // .title("Y Axis".red())
-        // .style(Style::default().white())
-        // .bounds([0.0, 1000.0]);
-        // // .labels(["0.0", "5.0", "10.0"]);
-
-        // // Create the chart and link all the parts together
-        // let chart = Chart::new(vec![data])
-        // .block(Block::new().title("Chart"))
-        // .x_axis(x_axis)
-        // .y_axis(y_axis);
-        // chart.render(history_area, buf);
     }
 }
 
@@ -218,7 +203,7 @@ impl Widget for &App {
     // where
         // Self: Sized 
         {
-            let vertical_layout = Layout::vertical([Constraint::Min(1), Constraint::Length(1)]);
+            let vertical_layout = Layout::vertical([Constraint::Min(10), Constraint::Length(1)]);
             let [top_area, bottom_area] = vertical_layout.areas(area);
             let horizonal_layout = Layout::horizontal([Constraint::Min(1), Constraint::Length(STATS_WIDTH)]);
             let [main_area, stats_area];
@@ -236,22 +221,3 @@ impl Widget for &App {
 
         }
 }
-
-
-// fn main() {
-//     println!("Hello, world!");
-//     let mut grid = cellular::Grid::new(100,20);
-//     grid.randomise_grid();
-//     for i in 0..500 {
-//         println!("Generation: {i}");
-//         grid.update_generation();
-//         grid.display();
-
-//         // Create a Duration from the milliseconds
-//         let duration = Duration::from_millis(50);
-//         // Pause the current thread for the specified duration
-//         thread::sleep(duration);
-        
-//     }
-    
-// }
