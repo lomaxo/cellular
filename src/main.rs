@@ -12,9 +12,11 @@ use ratatui::Frame;
 use ratatui::prelude::Stylize;
 use ratatui::{
     prelude::*,
-    widgets::{Block, Paragraph, Widget, Bar, BarChart, BarGroup},
+    widgets::{Block, Paragraph, Widget, Bar, BarChart, BarGroup, RenderDirection, Sparkline, Axis, Dataset, Chart, GraphType},
     text::{Text, Line},
 };
+
+use std::collections::VecDeque;
 
 fn main() -> io::Result<()> {
 
@@ -25,6 +27,7 @@ fn main() -> io::Result<()> {
         grid: cellular::Grid::new(150, 100), 
         running: true, 
         show_stats: false,
+        history: VecDeque::new(),
     };
 
     let app_result = app.run(&mut terminal);
@@ -39,6 +42,7 @@ pub struct App {
     grid: cellular::Grid,
     running: bool,
     show_stats: bool,
+    history: VecDeque<u64>,
 }
 
 impl App {
@@ -58,6 +62,8 @@ impl App {
             }
             if self.running {
                 self.grid.update_generation();
+                self.history.push_back(self.grid.get_stats().get_population());
+                if self.history.len() > 20 {self.history.pop_front();} ;
             }
 
         }
@@ -133,8 +139,8 @@ impl App {
 
     fn render_stats(&self, area: Rect, buf: &mut Buffer) {
         let stats = self.grid.get_stats();
-        let layout = Layout::vertical([Constraint::Max(20),Constraint::Length(6)]);
-        let [chart_area, blank_area] = layout.areas(area);
+        let layout = Layout::vertical([Constraint::Max(20),Constraint::Max(20), Constraint::Length(6)]);
+        let [chart_area, history_area,  blank_area] = layout.areas(area);
         
         let stat_text = Text::from(vec![
             Line::from(format!("Births: {}", stats.get_births())), 
@@ -161,7 +167,46 @@ impl App {
             // .data(BarGroup::default().bars(&[Bar::default().value(10), Bar::default().value(20)]))
             .max(self.grid.get_max_cells()/2)
             .render(chart_area, buf);
-            // barchart.render(area, buf);    
+            // barchart.render(area, buf);
+            
+        Sparkline::default()
+            .block(Block::bordered().title("Sparkline"))
+            .data(&self.history)
+            .max(self.grid.get_max_cells()/2)
+            // .direction(RenderDirection::RightToLeft)
+            .style(Style::default().red())
+            .absent_value_style(Style::default().fg(Color::Red))
+            .absent_value_symbol(symbols::shade::FULL)
+            .render(history_area, buf);  
+
+
+        // let data = Dataset::default()
+        //     .name("data2")
+        //     .marker(symbols::Marker::Braille)
+        //     .graph_type(GraphType::Line)
+        //     .style(Style::default().magenta())
+        //     // .data(&[(4.0, 5.0), (5.0, 8.0), (7.66, 13.5)]);
+        //     .data(&self.history);
+        // // Create the X axis and define its properties
+        // let x_axis = Axis::default()
+        // .title("X Axis".red())
+        // .style(Style::default().white())
+        // .bounds([0.0, 1000.0]);
+        // // .labels(["0.0", "5.0", "10.0"]);
+
+        // // Create the Y axis and define its properties
+        // let y_axis = Axis::default()
+        // .title("Y Axis".red())
+        // .style(Style::default().white())
+        // .bounds([0.0, 1000.0]);
+        // // .labels(["0.0", "5.0", "10.0"]);
+
+        // // Create the chart and link all the parts together
+        // let chart = Chart::new(vec![data])
+        // .block(Block::new().title("Chart"))
+        // .x_axis(x_axis)
+        // .y_axis(y_axis);
+        // chart.render(history_area, buf);
     }
 }
 
