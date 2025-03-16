@@ -1,11 +1,33 @@
 
 use std::{mem, usize};
+#[derive(Default)]
+pub struct GridStats {
+    births: u32,
+    survivors: u32,
+    deaths: u32,
+}
+
+impl GridStats {
+    pub fn get_births(&self) -> u32 {
+        return self.births;
+    }
+    pub fn get_survivors(&self) -> u32 {
+        return self.survivors;
+    }
+    pub fn get_deaths(&self) -> u32 {
+        return self.deaths;
+    }
+    pub fn get_population(&self) -> u32 {
+        return self.births + self.survivors;
+    }
+}
 
 pub struct Grid {
     cells: Vec<Vec<bool>>,
     prev_cells: Vec<Vec<bool>>,
     width: usize,
     height: usize,
+    // stats: GridStats,
 }
 
 impl Grid {
@@ -15,6 +37,7 @@ impl Grid {
             prev_cells: vec![vec![false; width]; height],
             width,
             height,
+            // stats: GridStats::default(),
         }
     }
 
@@ -65,6 +88,8 @@ impl Grid {
                 *c = rand::random();
             }
         }
+        self.prev_cells =  vec![vec![false; self.width]; self.height];
+
     }
 
     fn get_neighbour_count(&self, x: usize, y: usize) -> u32 {
@@ -90,7 +115,7 @@ impl Grid {
             for y in 0..self.height {
                 let live_neighbours = self.get_neighbour_count(x, y);
                 if self.cells[y][x] {
-                    // Currently alice
+                    // Currently alive
                     new_grid[y][x] = if live_neighbours < 2 || live_neighbours > 3  { false } else { true };
                 }
                 else {
@@ -100,6 +125,28 @@ impl Grid {
             }
         }
         self.prev_cells = mem::replace(&mut self.cells, new_grid);   
+    }
+
+    pub fn get_stats(&self) -> GridStats {
+        let mut stats = GridStats::default();
+        for x in 0..self.width {
+            for y in 0..self.height {
+                if self.cells[y][x] {
+                    // Alive
+                    if self.prev_cells[y][x] {
+                        stats.survivors += 1;
+                    } else {  
+                        stats.births += 1;
+                    }
+                } else {
+                    // Dead
+                    if self.prev_cells[y][x] {
+                        stats.deaths += 1;
+                    }
+                }
+            }
+        }
+        stats
     }
 }
 

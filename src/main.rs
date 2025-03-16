@@ -20,7 +20,12 @@ fn main() -> io::Result<()> {
 
     let mut terminal = ratatui::init();
 
-    let mut app = App {exit: false, grid: cellular::Grid::new(150, 100), running: true };
+    let mut app = App {
+        exit: false, 
+        grid: cellular::Grid::new(150, 100), 
+        running: true, 
+        show_stats: false,
+    };
 
     let app_result = app.run(&mut terminal);
     ratatui::restore();
@@ -32,7 +37,8 @@ fn main() -> io::Result<()> {
 pub struct App {
     exit: bool,
     grid: cellular::Grid,
-    running: bool
+    running: bool,
+    show_stats: bool,
 }
 
 impl App {
@@ -72,6 +78,7 @@ impl App {
                     if self.running { self.running = !self.running; }
                     else { self.grid.update_generation(); }
                 }
+                KeyCode::Char('s') => self.show_stats = !self.show_stats,
                 KeyCode::Char('c') => self.running = true,
                 _ => {}
             } 
@@ -86,23 +93,36 @@ impl Widget for &App {
     // where
         // Self: Sized 
         {
-            let vertical_layout = Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)]);
-            let [main_area, bottom_area] = vertical_layout.areas(area);
+            let vertical_layout = Layout::vertical([Constraint::Min(1), Constraint::Length(1)]);
+            let [top_area, bottom_area] = vertical_layout.areas(area);
+            let horizonal_layout = Layout::horizontal([Constraint::Min(1), Constraint::Length(20)]);
+            let [main_area, stats_area];
             
+            if self.show_stats {
+                [main_area, stats_area] = horizonal_layout.areas(top_area); 
+                let stats = self.grid.get_stats();
+                let stat_text = Text::from(vec![
+                    Line::from(format!("Births: {}", stats.get_births())), 
+                    Line::from(format!("Survivors: {}", stats.get_survivors())),
+                    Line::from(format!("Deaths: {}", stats.get_deaths())),
+                    Line::from(format!("Population: {}", stats.get_population()))
+
+                    ]);
+                Paragraph::new(stat_text)
+                .block(
+                    Block::bordered()
+                        .title(Line::from(" Statistics "))
+                        .border_set(border::THICK)
+                    )
+                .render(stats_area, buf);             
+            }
+            else {
+                main_area = top_area;
+            }
+
             let top_block= Block::bordered()
             .title(Line::from(" Game of Life "))
             .border_set(border::THICK);
-            
-            let bottom_block= Block::bordered()
-                // .title(Line::from(""))
-                .border_set(border::THICK);
-
-            Paragraph::new("Press <Q> to quit.\nPress <R> to randomise grid.")
-                .bold()
-                .block(bottom_block)
-                .render(bottom_area, buf);
-
-            // let grid_text = self.grid.get_grid_strings().join("\n");
 
             let mut grid_text = Text::from("");
             let cells = self.grid.get_cells();
@@ -129,12 +149,15 @@ impl Widget for &App {
                 }
                 grid_text.lines.push(line);
             }
-            // lines
-
 
             Paragraph::new(grid_text)
                 .block(top_block)
                 .render(main_area, buf);
+            
+            Paragraph::new("Q: quit | R: randomise grid | <space>: pause\\step | C: continue")
+                .bold()
+                .centered()
+                .render(bottom_area, buf);
         }
 }
 
