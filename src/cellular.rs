@@ -1,6 +1,8 @@
 use std::{mem, usize};
 use std::collections::VecDeque;
 
+use rand::Rng;
+
 const MAX_HISTORY: usize = 4000;
 
 #[derive(Default)]
@@ -83,9 +85,11 @@ impl Grid {
     pub fn randomise_grid(&mut self) {
         self.age = 0;
         self.history.clear();
+        const SPAWN_RATIO: i32 = 4;
+        let mut rng = rand::rng();
         for row in &mut self.cells {
             for c in row {
-                *c = rand::random();
+                *c = rng.random_range(1..=SPAWN_RATIO) == 1;
             }
         }
         self.prev_cells =  vec![vec![false; self.width]; self.height];
@@ -111,7 +115,7 @@ impl Grid {
 
     pub fn update_generation(&mut self) {
         let mut new_grid = self.cells.clone();
-        self.age += 1;
+        self.age = self.age.saturating_add(1);
         self.history.push_back(self.get_stats().get_population());
         if self.history.len() > MAX_HISTORY { self.history.pop_front(); }
         for x in 0..self.width {

@@ -143,6 +143,7 @@ impl App {
     fn render_stats(&self, area: Rect, buf: &mut Buffer) {
         const SPARK_HEIGHT: u16 = 20;
         const BAR_HEIGHT: u16 = 20;
+        const STAT_BORDER_TYPE: ratatui::symbols::border::Set = border::ROUNDED;
 
         let stats = self.grid.get_stats();
         let [history_area, chart_area,  text_area] = 
@@ -167,13 +168,13 @@ impl App {
             .block(
                 Block::bordered()
                     .title(Line::from(" Statistics "))
-                    .border_set(border::ROUNDED)
+                    .border_set(STAT_BORDER_TYPE)
                 )
             .render(text_area, buf); 
 
         let bar_width = (STATS_WIDTH - 4) / 3;
         BarChart::default()
-            .block(Block::bordered())//.title("BarChart"))
+            .block(Block::bordered().border_set(STAT_BORDER_TYPE))//.title("BarChart"))
             .bar_width(bar_width)
             .bar_gap(1)
             .bar_style(Style::new().yellow())
@@ -188,7 +189,7 @@ impl App {
         let step = std::cmp::max(history.len() / STATS_WIDTH as usize, 1);
         let data: Vec<&u64> = history.iter().step_by(step).collect();    
         Sparkline::default()
-            .block(Block::bordered().title("Population History"))
+            .block(Block::bordered().title("Population History").border_set(STAT_BORDER_TYPE))
             .data(data)
             .max(self.grid.get_max_cells()/2)
             .style(Style::default().red())
